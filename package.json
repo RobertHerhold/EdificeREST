@@ -1,22 +1,24 @@
 {
   "name": "edifice-rest",
+  "private": true,
   "version": "1.0.0",
   "description": "REST API for Edifice",
   "main": "app.js",
   "scripts": {
-    "start": "nodemon app.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js"
   },
   "author": "Robert Herhold <reherhold@gmail.com>",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "axios": "^0.10.0",
-    "caching-map": "^1.0.2",
-    "co-body": "^4.0.0",
-    "koa": "^1.2.0",
+    "axios": "0.10.0",
+    "caching-map": "1.0.2",
+    "co-body": "4.0.0",
+    "koa": "1.2.0",
     "koa-cors": "0.0.16",
-    "koa-logger": "^1.3.0",
-    "koa-router": "^5.4.0",
-    "mongoose": "^4.4.10",
-    "winston": "^2.2.0"
+    "koa-logger": "1.3.0",
+    "koa-router": "5.4.0",
+    "mongoose": "4.4.10",
+    "winston": "2.2.0"
   }
 }
