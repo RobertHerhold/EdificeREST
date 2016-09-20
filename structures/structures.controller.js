@@ -4,18 +4,31 @@ const Boom = require('boom');
 const structureSchema = require('./structure.schema');
 const helpers = require('../helpers');
 const _ = require('lodash');
-let gcloud;
 let datastore;
+let storage;
 
 exports.init = function(router, app) {
     router.post('/structures', createStructure);
+    router.post('/structures/nbt', uploadStructureNBT);
     router.put('/structures/:id', editStructure);
     router.get('/structures', getAllStructures);
     router.get('/structures/:id', getStructure);
 
-    gcloud = app.gcloud;
-    datastore = gcloud.datastore();
+    datastore = app.datastore;
+    storage = app.storage;
 };
+
+function* uploadStructureNBT() {
+    console.log(this.request.body);
+    const file = yield new Promise(function(resolve, reject) {
+        storage.bucket('edifice-structures').upload('test.dat', function(err, file) {
+            if(err) {
+                return reject(err);
+            }
+            return resolve(file);
+        });
+    });
+}
 
 function* createStructure() {
     let structure = this.request.body;

@@ -5,13 +5,13 @@ const bodyparser = require('koa-bodyparser');
 const Router = require('koa-router');
 const logger = require('winston');
 const config = require('config');
-const gcloud = require('gcloud')({
-    projectId: 'project-2072714222187644603'
-});
 
 let app = koa({ name: 'Edifice' });
 
-app.gcloud = gcloud; // Keep the configured instance of gcloud around in app
+const projectId = 'project-2072714222187644603';
+
+app.datastore = require('@google-cloud/datastore')({ projectId }); // Keep the configured instance of datastore
+app.storage = require('@google-cloud/storage')({ projectId }); // Keep the configured instance of storage
 
 app.use(require('koa-logger')());
 app.use(require('koa-cors')({ methods: ['GET', 'PUT', 'POST', 'DELETE'] }));

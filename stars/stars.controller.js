@@ -5,7 +5,6 @@ var Boom = require('boom');
 let helpers = require('../helpers');
 let _ = require('lodash');
 let rp = require('request-promise');
-let gcloud;
 let datastore;
 
 rp = rp.defaults({
@@ -18,8 +17,7 @@ rp = rp.defaults({
 exports.init = function(router, app) {
     router.post('/star', starStructure);
 
-    gcloud = app.gcloud;
-    datastore = gcloud.datastore();
+    datastore = app.datastore;
 };
 
 function* starStructure() {

@@ -6,7 +6,6 @@ let rp = require('request-promise');
 let config = require('config');
 const _ = require('lodash');
 let signupSchema = require('./signup.schema');
-let gcloud;
 let datastore;
 
 let auth0rp = rp.defaults({
@@ -21,8 +20,7 @@ let auth0rp = rp.defaults({
 exports.init = function(router, app) {
     router.post('/auth/signup', signup);
 
-    gcloud = app.gcloud;
-    datastore = gcloud.datastore();
+    datastore = app.datastore;
 };
 
 function* signup() {

@@ -7,7 +7,6 @@ const helpers = require('../../helpers');
 const Boom = require('boom');
 const moment = require('moment');
 const _ = require('lodash');
-let gcloud;
 let datastore;
 
 const auth0rp = rp.defaults({
@@ -22,8 +21,7 @@ const auth0rp = rp.defaults({
 exports.init = function(router, app) {
     router.post('/auth/verificationcode', grantVerificationCode);
 
-    gcloud = app.gcloud;
-    datastore = gcloud.datastore();
+    datastore = app.datastore;
 };
 
 function* grantVerificationCode() {
