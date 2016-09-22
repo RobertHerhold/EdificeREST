@@ -3,6 +3,8 @@
 const Boom = require('boom');
 const structureSchema = require('./structure.schema');
 const helpers = require('../helpers');
+const parse = require('co-busboy');
+const fs = require('fs');
 const _ = require('lodash');
 let datastore;
 let storage;
@@ -31,28 +33,42 @@ function* uploadStructureNBT() {
 }
 
 function* createStructure() {
-    let structure = this.request.body;
-    structure.finalized = false;
+    var parts = parse(this)
+    var part
+    while (part = yield parts) {
+        if (part.length) {
+            // arrays are busboy fields
+            console.log('key: ' + part[0])
+            console.log('value: ' + part[1])
+        } else {
+            // otherwise, it's a stream
+            // console.log('stream');
+            part.pipe(fs.createWriteStream('/home/robert/projects/EdificeREST/schematic.dat'))
+        }
+    }
+    console.log('and we are done parsing the form!')
+    // let structure = this.request.body;
+    // structure.finalized = false;
 
-    const res = yield new Promise((resolve, reject) => {
-        datastore.save({
-            key: datastore.key('Structure'),
-            data: structure
-        }, function(err, res) {
-            if(err) {
-                return reject(err);
-            }
-            return resolve(res);
-        });
-    });
-
-    // TODO figure out a better way to get the ID other than this magic path
-    structure.id = _.get(res, 'mutationResults[0].key.path[0].id');
-    // Remove the blocks to make the response smaller
-    delete structure.blocks;
+    // const res = yield new Promise((resolve, reject) => {
+    //     datastore.save({
+    //         key: datastore.key('Structure'),
+    //         data: structure
+    //     }, function(err, res) {
+    //         if(err) {
+    //             return reject(err);
+    //         }
+    //         return resolve(res);
+    //     });
+    // });
+    // 
+    // // TODO figure out a better way to get the ID other than this magic path
+    // structure.id = _.get(res, 'mutationResults[0].key.path[0].id');
+    // // Remove the blocks to make the response smaller
+    // delete structure.blocks;
 
     this.status = 201;
-    this.body = structure;
+    this.body = {};
 }
 
 function* editStructure() {
