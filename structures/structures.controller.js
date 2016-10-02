@@ -6,9 +6,7 @@ const helpers = require('../helpers');
 const parse = require('co-busboy');
 const _ = require('lodash');
 const cuid = require('cuid');
-const NbtReader = require('node-nbt').NbtReader;
-const promisify = require('promisify-node');
-const gunzip = promisify(require('zlib').gunzip);
+const nbt = require('nbt');
 let datastore;
 let bucket;
 
@@ -39,16 +37,23 @@ function* createStructure() {
         finalized: false
     };
     
-    const schematicData = yield new Promise(function(resolve) {
+    const schematicDataBuffer = yield new Promise(function(resolve) {
         let data = [];
         schematicDataStream.on('data', chunk => data.push(chunk));
         schematicDataStream.on('end', () => resolve(Buffer.concat(data)));
     });
     
-    const buffer = yield gunzip(schematicData);
-    let schematic = NbtReader.readTag(buffer);
-    schematic = NbtReader.removeBufferKey(schematic);
-    NbtReader.printAscii(schematic);
+    const schematic = (yield new Promise(function(resolve, reject) {
+        nbt.parse(schematicDataBuffer, function(err, data) {
+            if(err) {
+                return reject(err);
+            }
+            return resolve(data);
+        });
+    })).value;
+    
+    structure.author = _.get(schematic, "Metadata.value['.'].value.Author.value");
+    structure.name = _.get(schematic, "Metadata.value['.'].value.Name.value");
     
     // Save the structure record
     yield new Promise((resolve, reject) => {
@@ -62,6 +67,8 @@ function* createStructure() {
             return resolve(res);
         });
     });
+    
+    structure.id = structureId;
 
     this.status = 201;
     this.body = structure;

@@ -33,8 +33,7 @@
     "lodash": "4.13.1",
     "lru-cache": "4.0.1",
     "moment": "^2.13.0",
-    "node-nbt": "^1.0.0",
-    "promisify-node": "^0.4.0",
+    "nbt": "^0.6.0",
     "request-promise": "3.0.0",
     "winston": "2.2.0"
   },
