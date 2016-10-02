@@ -33,7 +33,7 @@ function* createStructure() {
     
     // Get some information from the schematic
     let structure = {
-        schematic: 'https://storage.cloud.google.com/edifice-structures/' + fileName,
+        schematic: 'https://storage.googleapis.com/edifice-structures/' + fileName,
         finalized: false
     };
     
