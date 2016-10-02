@@ -4,71 +4,67 @@ const Boom = require('boom');
 const structureSchema = require('./structure.schema');
 const helpers = require('../helpers');
 const parse = require('co-busboy');
-const fs = require('fs');
 const _ = require('lodash');
+const cuid = require('cuid');
+const NbtReader = require('node-nbt').NbtReader;
+const promisify = require('promisify-node');
+const gunzip = promisify(require('zlib').gunzip);
 let datastore;
-let storage;
+let bucket;
 
 exports.init = function(router, app) {
     router.post('/structures', createStructure);
-    router.post('/structures/nbt', uploadStructureNBT);
     router.put('/structures/:id', editStructure);
     router.get('/structures', getAllStructures);
     router.get('/structures/:id', getStructure);
 
     datastore = app.datastore;
-    storage = app.storage;
+    bucket = app.storage.bucket('edifice-structures');
 };
 
-function* uploadStructureNBT() {
-    console.log(this.request.body);
-    const file = yield new Promise(function(resolve, reject) {
-        storage.bucket('edifice-structures').upload('test.dat', function(err, file) {
+function* createStructure() {
+    const parts = parse(this);
+    const schematicDataStream = yield parts;
+    
+    // Upload the schematic
+    const structureId = cuid();
+    const fileName = structureId + '.schematic';
+    
+    const remoteWriteStream = bucket.file(fileName).createWriteStream();
+    schematicDataStream.pipe(remoteWriteStream);
+    
+    // Get some information from the schematic
+    let structure = {
+        schematic: 'https://storage.cloud.google.com/edifice-structures/' + fileName,
+        finalized: false
+    };
+    
+    const schematicData = yield new Promise(function(resolve) {
+        let data = [];
+        schematicDataStream.on('data', chunk => data.push(chunk));
+        schematicDataStream.on('end', () => resolve(Buffer.concat(data)));
+    });
+    
+    const buffer = yield gunzip(schematicData);
+    let schematic = NbtReader.readTag(buffer);
+    schematic = NbtReader.removeBufferKey(schematic);
+    NbtReader.printAscii(schematic);
+    
+    // Save the structure record
+    yield new Promise((resolve, reject) => {
+        datastore.save({
+            key: datastore.key(['Structure', structureId]),
+            data: structure
+        }, function(err, res) {
             if(err) {
                 return reject(err);
             }
-            return resolve(file);
+            return resolve(res);
         });
     });
-}
-
-function* createStructure() {
-    var parts = parse(this)
-    var part
-    while (part = yield parts) {
-        if (part.length) {
-            // arrays are busboy fields
-            console.log('key: ' + part[0])
-            console.log('value: ' + part[1])
-        } else {
-            // otherwise, it's a stream
-            // console.log('stream');
-            part.pipe(fs.createWriteStream('/home/robert/projects/EdificeREST/schematic.dat'))
-        }
-    }
-    console.log('and we are done parsing the form!')
-    // let structure = this.request.body;
-    // structure.finalized = false;
-
-    // const res = yield new Promise((resolve, reject) => {
-    //     datastore.save({
-    //         key: datastore.key('Structure'),
-    //         data: structure
-    //     }, function(err, res) {
-    //         if(err) {
-    //             return reject(err);
-    //         }
-    //         return resolve(res);
-    //     });
-    // });
-    // 
-    // // TODO figure out a better way to get the ID other than this magic path
-    // structure.id = _.get(res, 'mutationResults[0].key.path[0].id');
-    // // Remove the blocks to make the response smaller
-    // delete structure.blocks;
 
     this.status = 201;
-    this.body = {};
+    this.body = structure;
 }
 
 function* editStructure() {
