@@ -173,14 +173,8 @@ function* getAllStructures() {
 }
 
 function* getStructure() {
-    // the gcloud datastore takes only an int
-    const structureId = parseInt(this.params.id);
-    if(!structureId) {
-        throw Boom.badRequest('Invalid structure ID');
-    }
-
-    const res = yield new Promise(function(resolve, reject) {
-        datastore.get(datastore.key(['Structure', structureId]), function(err, data) {
+    const res = yield new Promise((resolve, reject) => {
+        datastore.get(datastore.key(['Structure', this.params.id]), function(err, data) {
             if(err) {
                 return reject(err);
             }
