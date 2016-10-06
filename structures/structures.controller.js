@@ -25,26 +25,26 @@ exports.init = function(router, app) {
 function* createStructure() {
     const parts = parse(this);
     const schematicDataStream = yield parts;
-    
+
     // Upload the schematic
     const structureId = cuid();
-    const fileName = structureId + '.schematic';
+    const fileName = structureId + '.schem';
     
     const remoteWriteStream = bucket.file(fileName).createWriteStream();
     schematicDataStream.pipe(remoteWriteStream);
-    
+
     // Get some information from the schematic
     let structure = {
         schematic: 'https://storage.googleapis.com/edifice-structures/' + fileName,
         finalized: false
     };
-    
+
     const schematicDataBuffer = yield new Promise(function(resolve) {
         let data = [];
         schematicDataStream.on('data', chunk => data.push(chunk));
         schematicDataStream.on('end', () => resolve(Buffer.concat(data)));
     });
-    
+
     const schematic = (yield new Promise(function(resolve, reject) {
         nbt.parse(schematicDataBuffer, function(err, data) {
             if(err) {
@@ -53,12 +53,12 @@ function* createStructure() {
             return resolve(data);
         });
     })).value;
-    
+
     /* eslint-disable quotes */
     structure.author = _.get(schematic, "Metadata.value['.'].value.Author.value");
     structure.name = _.get(schematic, "Metadata.value['.'].value.Name.value");
     /* eslint-enable quotes */
-    
+
     // Save the structure record
     yield new Promise((resolve, reject) => {
         datastore.save({
@@ -71,7 +71,7 @@ function* createStructure() {
             return resolve(res);
         });
     });
-    
+
     structure.id = structureId;
 
     this.status = 201;
@@ -192,7 +192,7 @@ function* getStructure() {
 
     let structure = res.data;
     structure.id = res.key.id;
-    
+
     if(this.query.schematic) {
         const schematicUrl = structure.schematic;
         const schematicDataBuffer = yield rp({
@@ -200,7 +200,7 @@ function* getStructure() {
             uri: schematicUrl,
             encoding: null
         });
-        
+
         const jsonData = yield new Promise(function(resolve, reject) {
             nbt.parse(schematicDataBuffer, function(err, data) {
                 if(err) {
@@ -222,12 +222,12 @@ function cleanupNBT(obj) {
         if(!obj.hasOwnProperty(key)) {
             continue;
         }
-        
+
         const value = obj[key];
         if(value.type !== undefined && value.value !== undefined) {
             obj[key] = value.value;
         }
-        
+
         if(typeof obj[key] === 'object' && !(obj[key] instanceof Array)) {
             cleanupNBT(obj[key]);
         }
