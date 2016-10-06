@@ -11,7 +11,7 @@ const rp = require('request-promise');
 
 let datastore;
 let bucket;
-const structureCollectionKey = process.env.NODE_ENV === 'development' ? 'dev_Structure' : 'Structure';
+const STRUCTURE_COLLECTION_KEY = process.env.NODE_ENV === 'development' ? 'dev_Structure' : 'Structure';
 
 exports.init = function(router, app) {
     router.post('/structures', createStructure);
@@ -63,7 +63,7 @@ function* createStructure() {
     // Save the structure record
     yield new Promise((resolve, reject) => {
         datastore.save({
-            key: datastore.key([structureCollectionKey, structureId]),
+            key: datastore.key([STRUCTURE_COLLECTION_KEY, structureId]),
             data: structure
         }, function(err, res) {
             if(err) {
@@ -81,31 +81,29 @@ function* createStructure() {
 
 function* editStructure() {
     helpers.validateInput(this.request.body, structureSchema.edit.input);
-
+    
     // the gcloud datastore takes only an int
-    const structureId = parseInt(this.params.id);
-    if(!structureId) {
-        throw Boom.badRequest('Invalid structure ID');
-    }
+    const structureId = this.params.id;
 
     yield new Promise((resolve, reject) => {
-        datastore.runInTransaction((transaction, done) => {
-            transaction.get(datastore.key([structureCollectionKey, structureId]), (err, structure) => {
-
+        const transaction = datastore.transaction();
+        transaction.run(err => {
+            if(err) {
+                return reject(err);
+            }
+            
+            transaction.get(datastore.key([STRUCTURE_COLLECTION_KEY, structureId]), (err, structure) => {
                 if (err) {
-                    done();
                     return reject(err);
                 }
                 if(!structure) {
-                    done();
                     return reject(Boom.notFound('Structure with ID ' + this.params.id + ' not found.'));
                 }
-
+                
                 let userValidationProm;
                 if(structure.data.finalized) {
                     userValidationProm = helpers.validateUser(this.header.authorization).then(user => {
                         if(user.app_metadata.mcuuid !== structure.data.creatorUUID && !user.app_metadata.roles.includes('admin')) {
-                            done();
                             return reject(Boom.unauthorized());
                         }
                     });
@@ -115,17 +113,23 @@ function* editStructure() {
                     structure.data.finalized = true;
                     userValidationProm = Promise.resolve();
                 }
-
+                
                 userValidationProm.then(() => {
                     _.merge(structure.data, this.request.body);
                     structure.data.stargazers = [];
                     transaction.save(structure);
-
+                    
                     // Keep a reference around for including in the response
                     this.structure = structure.data;
-                    return done();
+                    
+                    transaction.commit(function(err) {
+                        if(err) {
+                            return reject(err);
+                        }
+                        return resolve();
+                    });
                 });
-
+                
             });
         }, function(transactionError) {
             if (transactionError) {
@@ -140,8 +144,6 @@ function* editStructure() {
     });
 
     this.status = 200;
-    // Delete blocks from the response
-    delete this.structure.blocks;
     this.body = this.structure;
 }
 
@@ -150,7 +152,7 @@ function* getAllStructures() {
         'finalized': true
     };
     Object.assign(searchTerms, this.query || {});
-    let query = datastore.createQuery(structureCollectionKey);
+    let query = datastore.createQuery(STRUCTURE_COLLECTION_KEY);
     for(const condition in searchTerms) {
         query = query.filter(condition, '=', searchTerms[condition]);
     }
@@ -179,7 +181,7 @@ function* getAllStructures() {
 
 function* getStructure() {
     const res = yield new Promise((resolve, reject) => {
-        datastore.get(datastore.key([structureCollectionKey, this.params.id]), function(err, data) {
+        datastore.get(datastore.key([STRUCTURE_COLLECTION_KEY, this.params.id]), function(err, data) {
             if(err) {
                 return reject(err);
             }
