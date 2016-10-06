@@ -11,6 +11,7 @@ const rp = require('request-promise');
 
 let datastore;
 let bucket;
+const structureCollectionKey = process.env.NODE_ENV === 'development' ? 'dev_Structure' : 'Structure';
 
 exports.init = function(router, app) {
     router.post('/structures', createStructure);
@@ -29,7 +30,7 @@ function* createStructure() {
     // Upload the schematic
     const structureId = cuid();
     const fileName = structureId + '.schem';
-    
+
     const remoteWriteStream = bucket.file(fileName).createWriteStream();
     schematicDataStream.pipe(remoteWriteStream);
 
@@ -62,7 +63,7 @@ function* createStructure() {
     // Save the structure record
     yield new Promise((resolve, reject) => {
         datastore.save({
-            key: datastore.key(['Structure', structureId]),
+            key: datastore.key([structureCollectionKey, structureId]),
             data: structure
         }, function(err, res) {
             if(err) {
@@ -89,7 +90,7 @@ function* editStructure() {
 
     yield new Promise((resolve, reject) => {
         datastore.runInTransaction((transaction, done) => {
-            transaction.get(datastore.key(['Structure', structureId]), (err, structure) => {
+            transaction.get(datastore.key([structureCollectionKey, structureId]), (err, structure) => {
 
                 if (err) {
                     done();
@@ -149,7 +150,7 @@ function* getAllStructures() {
         'finalized': true
     };
     Object.assign(searchTerms, this.query || {});
-    let query = datastore.createQuery('Structure');
+    let query = datastore.createQuery(structureCollectionKey);
     for(const condition in searchTerms) {
         query = query.filter(condition, '=', searchTerms[condition]);
     }
@@ -178,7 +179,7 @@ function* getAllStructures() {
 
 function* getStructure() {
     const res = yield new Promise((resolve, reject) => {
-        datastore.get(datastore.key(['Structure', this.params.id]), function(err, data) {
+        datastore.get(datastore.key([structureCollectionKey, this.params.id]), function(err, data) {
             if(err) {
                 return reject(err);
             }
