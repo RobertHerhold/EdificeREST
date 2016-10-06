@@ -171,7 +171,7 @@ function* getAllStructures() {
     for(const entry of res) {
         const structure = entry.data;
         delete structure.blocks;
-        structure.id = entry.key.id;
+        structure.id = entry.key.name;
         structures.push(structure);
     }
 
@@ -194,7 +194,7 @@ function* getStructure() {
     }
 
     let structure = res.data;
-    structure.id = res.key.id;
+    structure.id = res.key.name;
 
     if(this.query.schematic) {
         const schematicUrl = structure.schematic;
