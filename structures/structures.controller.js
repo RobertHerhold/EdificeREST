@@ -7,6 +7,8 @@ const parse = require('co-busboy');
 const _ = require('lodash');
 const cuid = require('cuid');
 const nbt = require('nbt');
+const rp = require('request-promise');
+
 let datastore;
 let bucket;
 
@@ -52,8 +54,10 @@ function* createStructure() {
         });
     })).value;
     
+    /* eslint-disable quotes */
     structure.author = _.get(schematic, "Metadata.value['.'].value.Author.value");
     structure.name = _.get(schematic, "Metadata.value['.'].value.Name.value");
+    /* eslint-enable quotes */
     
     // Save the structure record
     yield new Promise((resolve, reject) => {
@@ -188,7 +192,44 @@ function* getStructure() {
 
     let structure = res.data;
     structure.id = res.key.id;
+    
+    if(this.query.schematic) {
+        const schematicUrl = structure.schematic;
+        const schematicDataBuffer = yield rp({
+            method: 'GET',
+            uri: schematicUrl,
+            encoding: null
+        });
+        
+        const jsonData = yield new Promise(function(resolve, reject) {
+            nbt.parse(schematicDataBuffer, function(err, data) {
+                if(err) {
+                    return reject(err);
+                }
+                return resolve(data);
+            });
+        });
+        cleanupNBT(jsonData);
+        structure.schematic = jsonData.value;
+    }
 
     this.status = 200;
     this.body = res.data;
+}
+
+function cleanupNBT(obj) {
+    for(const key in obj) {
+        if(!obj.hasOwnProperty(key)) {
+            continue;
+        }
+        
+        const value = obj[key];
+        if(value.type !== undefined && value.value !== undefined) {
+            obj[key] = value.value;
+        }
+        
+        if(typeof obj[key] === 'object' && !(obj[key] instanceof Array)) {
+            cleanupNBT(obj[key]);
+        }
+    }
 }
